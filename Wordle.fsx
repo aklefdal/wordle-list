@@ -1,5 +1,6 @@
 open System
 open System.Net.Http
+open System.Collections.Generic
 
 //
 // String functions
@@ -19,6 +20,14 @@ let getCharCount (words: string []) =
     |> Array.map uniqueChars
     |> String.Concat
     |> countByChar
+
+let getPositionedCharCount (words: string []) =
+    [0..4]
+    |> List.map (fun i -> 
+        words 
+        |> Array.map (fun word -> word[i]) |> String
+        |> countByChar
+        |> dict)
 
 let isWithoutChars (chars: seq<char>) (word: string) =
     chars
@@ -49,20 +58,47 @@ let findWordValues (words:string[]) =
         word, value)
     |> Array.sortByDescending snd
 
+let wordPositionedValue (positionedCharCounts:IDictionary<char,int> list) (word:string) = 
+    word :> seq<char>
+    |> Seq.zip positionedCharCounts
+    |> Seq.map (fun (cc, c) -> cc[c])
+    |> Seq.sum
+
 let findBestWord (words:string[]) = 
     words
     |> findWordValues
     |> Array.head
     |> fst
 
+let findWorstWords (words:string[]) = 
+    let l = if words.Length < 10 then 0 else words.Length - 10
+    words
+    |> findWordValues
+    |> (fun a -> a.[l..])
+    |> Array.map fst
+
 let findWordBaseValues (baseWords:string[]) (words:string[]) = 
     let baseCharCounts = baseWords |> getCharCount
+    let positionedCharCount = words |> getPositionedCharCount
     let charCounts = words |> getCharCount
     words
     |> Array.map (fun word -> 
+        let positionedValue = word |> wordPositionedValue positionedCharCount
         let baseValue = word |> wordValue baseCharCounts
         let value = word |> wordValue charCounts
-        word, (value, baseValue))
+        word, positionedValue, value, baseValue)
+    |> Array.sortByDescending (fun (word, v1, v2, v3) -> v1, v2, v3)
+
+let findBestWord2 (baseWords:string[]) (words:string[]) = 
+    let count = words.Length
+    let wbv = words |> findWordBaseValues baseWords
+    let av1 = wbv |> Array.averageBy (fun (_, v1, _, _) -> v1 |> float)
+    let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
+    let av3 = wbv |> Array.averageBy (fun (_, _, _, v3) -> v3 |> float)
+    wbv 
+    |> Array.map (fun (word, v1, v2, v3) -> 
+        let xxx = float v1/av1 + float v2/av2 + float v3/av3
+        word, (xxx, (v1, v2, v3)))
     |> Array.sortByDescending snd
 
 //
@@ -162,18 +198,17 @@ let startWord =
 let secondWord =
     allWords
     |> guess startWord "BBBBB"
-    |> findBestWord
+    |> findBestWord2 allWords
+
 
 let possibleWords =
     allWords
-    |> guess "arose" "BYBBY"
-    |> guess "tired" "BBGYB"
-    |> guess "mercy" "BGGBG"
-    |> guess "jerky" "BGGGG"
+    |> guess "arose" "YBBBY"
+    |> guess "lated" "YYYYB"
 
 let withValues =
     possibleWords
-    |> findWordBaseValues allWords
+    |> findBestWord2 allWords
 
 
 let withUniqueCharsWithValues =
