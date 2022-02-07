@@ -90,16 +90,16 @@ let findWordBaseValues (baseWords:string[]) (words:string[]) =
     |> Array.sortByDescending (fun (word, v1, v2, v3) -> v1, v2, v3)
 
 let findBestWord2 (baseWords:string[]) (words:string[]) = 
-    let count = words.Length
     let wbv = words |> findWordBaseValues baseWords
     let av1 = wbv |> Array.averageBy (fun (_, v1, _, _) -> v1 |> float)
-    let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
+    // let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
     let av3 = wbv |> Array.averageBy (fun (_, _, _, v3) -> v3 |> float)
     wbv 
     |> Array.map (fun (word, v1, v2, v3) -> 
-        let xxx = float v1/av1 + float v2/av2 + float v3/av3
+        let xxx = float v1/av1 + float v3/av3 // + float v2/av2 
         word, (xxx, (v1, v2, v3)))
     |> Array.sortByDescending snd
+    |> Array.truncate 15 
 
 //
 // Functions and types for handling guesses
@@ -193,23 +193,26 @@ let allWords = getAllWords () |> splitLines
 
 let startWord = 
     allWords
-    |> findBestWord
+    |> findBestWord2 allWords
+    |> Array.head
+    |> fst
 
 let secondWord =
     allWords
     |> guess startWord "BBBBB"
     |> findBestWord2 allWords
-
+    |> Array.head
+    |> fst
 
 let possibleWords =
     allWords
-    |> guess "arose" "YBBBY"
-    |> guess "lated" "YYYYB"
+    |> guess "fancy" "BBBBB"
+    |> guess "bogus" "BBBBB"
+    |> guess "tired" "BBYGY"
 
 let withValues =
     possibleWords
     |> findBestWord2 allWords
-
 
 let withUniqueCharsWithValues =
     possibleWords
