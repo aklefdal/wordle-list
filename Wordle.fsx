@@ -92,11 +92,11 @@ let findWordBaseValues (baseWords:string[]) (words:string[]) =
 let findBestWord2 (baseWords:string[]) (words:string[]) = 
     let wbv = words |> findWordBaseValues baseWords
     let av1 = wbv |> Array.averageBy (fun (_, v1, _, _) -> v1 |> float)
-    // let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
+    let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
     let av3 = wbv |> Array.averageBy (fun (_, _, _, v3) -> v3 |> float)
     wbv 
     |> Array.map (fun (word, v1, v2, v3) -> 
-        let xxx = float v1/av1 + float v3/av3 // + float v2/av2 
+        let xxx = float v1/av1 + float v3/av3 //+ float v2/av2 
         word, (xxx, (v1, v2, v3)))
     |> Array.sortByDescending snd
     |> Array.truncate 15 
@@ -140,7 +140,7 @@ let handleChar (resultsSoFar:Result list) (resultsForChar:Result list) =
     match resultsForChar with
     | [] -> failwith "Ouch"
     | [result] -> result :: resultsSoFar
-    | result1 :: result2 :: _ ->
+    | [result1; result2] ->
         match result1.Color, result2.Color with
         | Green, Green
         | Black, Black -> result1 :: result2 :: resultsSoFar
@@ -155,6 +155,7 @@ let handleChar (resultsSoFar:Result list) (resultsForChar:Result list) =
         | YellowWithAnother, _
         | _, BlackWithAnother
         | _, YellowWithAnother -> failwith "Boom"
+    | _ -> failwith "Three equal chars in a word is not supported (yet)"
 
 handleChar [] [{Char = 'r'; Position = 2; Color = Yellow};{Char = 'r'; Position = 3; Color = Green}]
 
@@ -168,7 +169,7 @@ handleDuplicateCharsInAnswer
         {Char = 'e'; Position = 1; Color = Green}
         {Char = 'r'; Position = 2; Color = Green}
         {Char = 'r'; Position = 3; Color = Black}
-        {Char = 'y'; Position = 3; Color = Green} ]
+        {Char = 'y'; Position = 4; Color = Green} ]
 
 let guess (word:string) (result:string) (words:string[]) =
     Seq.zip word result 
