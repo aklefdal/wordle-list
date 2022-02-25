@@ -22,10 +22,11 @@ let getCharCount (words: string []) =
     |> countByChar
 
 let getPositionedCharCount (words: string []) =
-    [0..4]
-    |> List.map (fun i -> 
-        words 
-        |> Array.map (fun word -> word[i]) |> String
+    [ 0..4 ]
+    |> List.map (fun i ->
+        words
+        |> Array.map (fun word -> word[i])
+        |> String
         |> countByChar
         |> dict)
 
@@ -34,71 +35,78 @@ let isWithoutChars (chars: seq<char>) (word: string) =
     |> Seq.filter (fun c -> word.Contains c)
     |> Seq.isEmpty
 
-let hasOnlyUniqueChars (word: string) =
-    (word |> uniqueChars) = word
+let hasOnlyUniqueChars (word: string) = (word |> uniqueChars) = word
 
 
 //
 // Functions for measuring value of a remaining possible word
 //
-let charValue (charCounts:(char*int) list) (c:char) = 
+let charValue (charCounts: (char * int) list) (c: char) =
     charCounts
     |> List.find (fun (c2, _) -> c2 = c)
     |> snd
 
-let wordValue (charCounts:(char*int) list) (s:string) = 
+let wordValue (charCounts: (char * int) list) (s: string) =
     s :> seq<char>
     |> Seq.distinct
     |> Seq.sumBy (fun c -> c |> charValue charCounts)
 
-let findWordValues (words:string[]) = 
+let findWordValues (words: string []) =
     let charCounts = words |> getCharCount
+
     words
-    |> Array.map (fun word -> 
+    |> Array.map (fun word ->
         let value = word |> wordValue charCounts
         word, value)
     |> Array.sortByDescending snd
 
-let wordPositionedValue (positionedCharCounts:IDictionary<char,int> list) (word:string) = 
+let wordPositionedValue (positionedCharCounts: IDictionary<char, int> list) (word: string) =
     word :> seq<char>
     |> Seq.zip positionedCharCounts
     |> Seq.map (fun (cc, c) -> cc[c])
     |> Seq.sum
 
-type WordValues = {
-    Word: string
-    BaseValue: int // Based upon how often the characters in the word occur in all words in the set
-    PositionedValue: int // Based upon how often the characters in the word occur in the right position in all words in the set
+type WordValues =
+    { Word: string
+      BaseValue: int // Based upon how often the characters in the word occur in all words in the set
+      PositionedValue: int // Based upon how often the characters in the word occur in the right position in all words in the set
     // RemainingValue: int// Based upon how often the characters in the word occur in the **remaining** words in the set
-}
+     }
 
-let findWordBaseValues (baseWords:string[]) (words:string[]) = 
+let findWordBaseValues (baseWords: string []) (words: string []) =
     let baseCharCounts = baseWords |> getCharCount
     let positionedCharCount = words |> getPositionedCharCount
     // let charCounts = words |> getCharCount
     words
-    |> Array.map (fun word -> 
-        { Word = word 
+    |> Array.map (fun word ->
+        { Word = word
           PositionedValue = word |> wordPositionedValue positionedCharCount
           BaseValue = word |> wordValue baseCharCounts
-        //   RemainingValue = word |> wordValue charCounts 
+        //   RemainingValue = word |> wordValue charCounts
         })
 
-let findBestWords (baseWords:string[]) (words:string[]) = 
+let findBestWords (baseWords: string []) (words: string []) =
     let wordBaseValues = words |> findWordBaseValues baseWords
-    
-    let averagePositionedValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.PositionedValue |> float)
-    let averageBaseValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.BaseValue |> float)
+
+    let averagePositionedValue =
+        wordBaseValues
+        |> Array.averageBy (fun wordValues -> wordValues.PositionedValue |> float)
+
+    let averageBaseValue =
+        wordBaseValues
+        |> Array.averageBy (fun wordValues -> wordValues.BaseValue |> float)
     // let averageRemainingValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.RemainingValue |> float)
 
-    wordBaseValues 
-    |> Array.map (fun wordValues -> 
-        let score = (float wordValues.PositionedValue)/averagePositionedValue 
-                    + (float wordValues.BaseValue)/averageBaseValue
-                    // + (float wordValues.RemainingValue)/averageRemainingValue
+    wordBaseValues
+    |> Array.map (fun wordValues ->
+        let score =
+            (float wordValues.PositionedValue)
+            / averagePositionedValue
+            + (float wordValues.BaseValue) / averageBaseValue
+        // + (float wordValues.RemainingValue)/averageRemainingValue
         wordValues.Word, (score, (wordValues.PositionedValue, wordValues.BaseValue)))
     |> Array.sortByDescending snd
-    |> Array.truncate 15 
+    |> Array.truncate 15
 
 //
 // Functions and types for handling guesses
@@ -117,52 +125,83 @@ let toColor =
     | 'G' -> Green
     | c -> failwithf "Illegal value for color: %c" c
 
-type Result = {
-    Char: char
-    Position: int
-    Color: Color
-}
+type Result =
+    { Char: char
+      Position: int
+      Color: Color }
 
-let wordContainsCharTimes (c:char) (i:int) (word:string) : bool =
-    let chars = word |> Seq.filter (fun c1 -> c1 = c) 
+let wordContainsCharTimes (c: char) (i: int) (word: string) : bool =
+    let chars = word |> Seq.filter (fun c1 -> c1 = c)
     Seq.length chars = i
 
-let filterWords (words:string[]) (result: Result) =
+let filterWords (words: string []) (result: Result) =
     match result.Color with
-    | Yellow -> words |> Array.filter (fun word -> word.Contains(result.Char) && word[result.Position] <> result.Char)
-    | Green -> words |> Array.filter (fun word -> word[result.Position] = result.Char)
-    | Black -> words |> Array.filter (fun word -> word.Contains(result.Char) |> not)
-    | BlackWithAnother -> words |> Array.filter (fun word -> (word |> wordContainsCharTimes result.Char 1))
-    | YellowWithAnother -> words |> Array.filter (fun word -> word[result.Position] <> result.Char && word |> wordContainsCharTimes result.Char 2)
+    | Yellow ->
+        words
+        |> Array.filter (fun word ->
+            word.Contains(result.Char)
+            && word[result.Position] <> result.Char)
+    | Green ->
+        words
+        |> Array.filter (fun word -> word[result.Position] = result.Char)
+    | Black ->
+        words
+        |> Array.filter (fun word -> word.Contains(result.Char) |> not)
+    | BlackWithAnother ->
+        words
+        |> Array.filter (fun word -> (word |> wordContainsCharTimes result.Char 1))
+    | YellowWithAnother ->
+        words
+        |> Array.filter (fun word ->
+            word[result.Position] <> result.Char
+            && word |> wordContainsCharTimes result.Char 2)
 
-let handleChar (resultsSoFar:Result list) (resultsForChar:Result list) = 
+let handleChar (resultsSoFar: Result list) (resultsForChar: Result list) =
     match resultsForChar with
     | [] -> failwith "Ouch"
-    | [result] -> result :: resultsSoFar
-    | [result1; result2] ->
+    | [ result ] -> result :: resultsSoFar
+    | [ result1; result2 ] ->
         match result1.Color, result2.Color with
         | Green, Green
         | Black, Black -> result1 :: result2 :: resultsSoFar
         | Yellow, Yellow
-        | Yellow, Green -> {result1 with Color = YellowWithAnother} :: result2 :: resultsSoFar
-        | Green, Yellow -> result1 :: {result2 with Color = YellowWithAnother} :: resultsSoFar
+        | Yellow, Green ->
+            { result1 with Color = YellowWithAnother }
+            :: result2 :: resultsSoFar
+        | Green, Yellow ->
+            result1
+            :: { result2 with Color = YellowWithAnother }
+               :: resultsSoFar
         | Black, Green
-        | Black, Yellow -> {result1 with Color = BlackWithAnother} :: result2 :: resultsSoFar
+        | Black, Yellow ->
+            { result1 with Color = BlackWithAnother }
+            :: result2 :: resultsSoFar
         | Green, Black
-        | Yellow, Black -> result1 :: {result2 with Color = BlackWithAnother} :: resultsSoFar
+        | Yellow, Black ->
+            result1
+            :: { result2 with Color = BlackWithAnother }
+               :: resultsSoFar
         | BlackWithAnother, _
         | YellowWithAnother, _
         | _, BlackWithAnother
         | _, YellowWithAnother -> failwith "Boom"
     | _ -> failwith "Three equal chars in a word is not supported (yet)"
 
-let handleDuplicateCharsInAnswer (answers:seq<Result>) =
-    let byChar = answers |> Seq.toList |> List.groupBy (fun r -> r.Char) |> List.map snd
+let handleDuplicateCharsInAnswer (answers: seq<Result>) =
+    let byChar =
+        answers
+        |> Seq.toList
+        |> List.groupBy (fun r -> r.Char)
+        |> List.map snd
+
     byChar |> List.fold handleChar []
 
-let guess (word:string) (result:string) (words:string[]) =
-    Seq.zip word result 
-    |> Seq.mapi (fun pos (c, color) -> {Char = c; Position = pos; Color = color |> toColor })
+let guess (word: string) (result: string) (words: string []) =
+    Seq.zip word result
+    |> Seq.mapi (fun pos (c, color) ->
+        { Char = c
+          Position = pos
+          Color = color |> toColor })
     |> handleDuplicateCharsInAnswer
     |> Seq.fold filterWords words
 
@@ -181,7 +220,7 @@ let allWords = getAllWords () |> splitLines
 // Let's guess!
 //
 
-let startWord = 
+let startWord =
     allWords
     |> findBestWords allWords
     |> Array.head
