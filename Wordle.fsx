@@ -37,6 +37,7 @@ let isWithoutChars (chars: seq<char>) (word: string) =
 let hasOnlyUniqueChars (word: string) =
     (word |> uniqueChars) = word
 
+
 //
 // Functions for measuring value of a remaining possible word
 //
@@ -64,40 +65,38 @@ let wordPositionedValue (positionedCharCounts:IDictionary<char,int> list) (word:
     |> Seq.map (fun (cc, c) -> cc[c])
     |> Seq.sum
 
-let findBestWord (words:string[]) = 
-    words
-    |> findWordValues
-    |> Array.head
-    |> fst
-
-let findWorstWords (words:string[]) = 
-    let l = if words.Length < 10 then 0 else words.Length - 10
-    words
-    |> findWordValues
-    |> (fun a -> a.[l..])
-    |> Array.map fst
+type WordValues = {
+    Word: string
+    BaseValue: int // Based upon how often the characters in the word occur in all words in the set
+    PositionedValue: int // Based upon how often the characters in the word occur in the right position in all words in the set
+    // RemainingValue: int// Based upon how often the characters in the word occur in the **remaining** words in the set
+}
 
 let findWordBaseValues (baseWords:string[]) (words:string[]) = 
     let baseCharCounts = baseWords |> getCharCount
     let positionedCharCount = words |> getPositionedCharCount
-    let charCounts = words |> getCharCount
+    // let charCounts = words |> getCharCount
     words
     |> Array.map (fun word -> 
-        let positionedValue = word |> wordPositionedValue positionedCharCount
-        let baseValue = word |> wordValue baseCharCounts
-        let value = word |> wordValue charCounts
-        word, positionedValue, value, baseValue)
-    |> Array.sortByDescending (fun (word, v1, v2, v3) -> v1, v2, v3)
+        { Word = word 
+          PositionedValue = word |> wordPositionedValue positionedCharCount
+          BaseValue = word |> wordValue baseCharCounts
+        //   RemainingValue = word |> wordValue charCounts 
+        })
 
-let findBestWord2 (baseWords:string[]) (words:string[]) = 
-    let wbv = words |> findWordBaseValues baseWords
-    let av1 = wbv |> Array.averageBy (fun (_, v1, _, _) -> v1 |> float)
-    let av2 = wbv |> Array.averageBy (fun (_, _, v2, _) -> v2 |> float)
-    let av3 = wbv |> Array.averageBy (fun (_, _, _, v3) -> v3 |> float)
-    wbv 
-    |> Array.map (fun (word, v1, v2, v3) -> 
-        let xxx = float v1/av1 + float v3/av3 //+ float v2/av2 
-        word, (xxx, (v1, v2, v3)))
+let findBestWords (baseWords:string[]) (words:string[]) = 
+    let wordBaseValues = words |> findWordBaseValues baseWords
+    
+    let averagePositionedValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.PositionedValue |> float)
+    let averageBaseValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.BaseValue |> float)
+    // let averageRemainingValue = wordBaseValues |> Array.averageBy (fun wordValues -> wordValues.RemainingValue |> float)
+
+    wordBaseValues 
+    |> Array.map (fun wordValues -> 
+        let score = (float wordValues.PositionedValue)/averagePositionedValue 
+                    + (float wordValues.BaseValue)/averageBaseValue
+                    // + (float wordValues.RemainingValue)/averageRemainingValue
+        wordValues.Word, (score, (wordValues.PositionedValue, wordValues.BaseValue)))
     |> Array.sortByDescending snd
     |> Array.truncate 15 
 
@@ -157,19 +156,9 @@ let handleChar (resultsSoFar:Result list) (resultsForChar:Result list) =
         | _, YellowWithAnother -> failwith "Boom"
     | _ -> failwith "Three equal chars in a word is not supported (yet)"
 
-handleChar [] [{Char = 'r'; Position = 2; Color = Yellow};{Char = 'r'; Position = 3; Color = Green}]
-
 let handleDuplicateCharsInAnswer (answers:seq<Result>) =
     let byChar = answers |> Seq.toList |> List.groupBy (fun r -> r.Char) |> List.map snd
     byChar |> List.fold handleChar []
-
-handleDuplicateCharsInAnswer 
-    [
-        {Char = 'm'; Position = 0; Color = Black}
-        {Char = 'e'; Position = 1; Color = Green}
-        {Char = 'r'; Position = 2; Color = Green}
-        {Char = 'r'; Position = 3; Color = Black}
-        {Char = 'y'; Position = 4; Color = Green} ]
 
 let guess (word:string) (result:string) (words:string[]) =
     Seq.zip word result 
@@ -194,28 +183,13 @@ let allWords = getAllWords () |> splitLines
 
 let startWord = 
     allWords
-    |> findBestWord2 allWords
+    |> findBestWords allWords
     |> Array.head
     |> fst
 
-let secondWord =
+let bestWords =
     allWords
-    |> guess startWord "BBBBB"
-    |> findBestWord2 allWords
-    |> Array.head
-    |> fst
-
-let possibleWords =
-    allWords
-    |> guess "fancy" "BBBBB"
-    |> guess "bogus" "BBBBB"
-    |> guess "tired" "BBYGY"
-
-let withValues =
-    possibleWords
-    |> findBestWord2 allWords
-
-let withUniqueCharsWithValues =
-    possibleWords
-    |> Array.filter hasOnlyUniqueChars
-    |> findWordBaseValues allWords
+    |> guess "tares" "BBBBB"
+    |> guess "doily" "YBYBB"
+    |> guess "cupid" "BBBGG"
+    |> findBestWords allWords
