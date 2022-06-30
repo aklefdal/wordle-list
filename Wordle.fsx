@@ -106,7 +106,7 @@ let findBestWords (baseWords: string []) (words: string []) =
         // + (float wordValues.RemainingValue)/averageRemainingValue
         wordValues.Word, (score, (wordValues.PositionedValue, wordValues.BaseValue)))
     |> Array.sortByDescending snd
-    |> Array.truncate 15
+    |> Array.truncate 145
 
 //
 // Functions and types for handling guesses
@@ -168,6 +168,7 @@ let handleChar (resultsSoFar: Result list) (resultsForChar: Result list) =
         | Yellow, Green ->
             { result1 with Color = YellowWithAnother }
             :: result2 :: resultsSoFar
+
         | Green, Yellow ->
             result1
             :: { result2 with Color = YellowWithAnother }
@@ -216,19 +217,54 @@ let getAllWords () =
 
 let allWords = getAllWords () |> splitLines
 
+let getAllEnglishWords () =
+    let fileName = "en.txt"
+    System.IO.File.ReadAllLines(fileName)
+
+let allEnglishWords = getAllEnglishWords ()
+
 //
 // Let's guess!
 //
 
 let startWord =
-    allWords
-    |> findBestWords allWords
+    allEnglishWords
+    |> findBestWords allEnglishWords
     |> Array.head
     |> fst
 
 let bestWords =
-    allWords
-    |> guess "tares" "BBBBB"
-    |> guess "doily" "YBYBB"
-    |> guess "cupid" "BBBGG"
-    |> findBestWords allWords
+    allEnglishWords
+    |> guess "carts" "BGBBB"
+    |> guess "panel" "BGBBB"
+    |> guess "maiko" "BGBGB"
+    |> findBestWords allEnglishWords
+
+// CARTS,DIRTS,RENTS,PORTS,TURNS,SYNTH
+// BLIND,CLANG,CLAMP,CLANK,CLAMP,CRAWL
+
+//
+// Get French words
+//
+
+let getAllFrenchWords () =
+    let fileName = "words-fr.txt"
+    System.IO.File.ReadAllLines(fileName)
+
+let allFrenchWords = getAllFrenchWords ()
+
+//
+// Let's guess!
+//
+
+let frenchStartWord =
+    allFrenchWords
+    |> findBestWords allFrenchWords
+    |> Array.head
+    |> fst
+
+let bestFrenchWords =
+    allFrenchWords
+    |> guess "raies" "BYYYB"
+    |> guess "media" "YYBGY"
+    |> findBestWords allFrenchWords
